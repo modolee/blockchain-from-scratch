@@ -160,4 +160,4 @@ def mine_unconfirmed_transactions():
 def get_pending_tx():
     return json.dumps(blockchain.unconfirmed_transactions)
 
-app.run(debug=True, port=7000)
+app.run(debug=True, host='0.0.0.0', port=7000)
