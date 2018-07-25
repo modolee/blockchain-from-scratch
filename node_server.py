@@ -127,7 +127,11 @@ class Blockchain:
 
 app = Flask(__name__)
 
+# 블록 체인
 blockchain = Blockchain()
+
+# 네트워크 참여자
+peers = set()
 
 @app.route('/new_transaction', methods=['POST'])
 def new_transaction():
@@ -161,5 +165,41 @@ def mine_unconfirmed_transactions():
 @app.route('/pending_tx')
 def get_pending_tx():
     return json.dumps(blockchain.unconfirmed_transactions)
+
+@app.route('/add_nodes', methods=['POST'])
+def register_new_peers():
+    nodes = request.get_json()
+    if not nodes:
+        return "Invalid data", 400
+    for node in nodes:
+        peers.add(node)
+
+    return "Success", 201
+
+def consensus():
+    """
+    가장 긴 체인이 발견되면 그 체인으로 교체하는 컨센서스 알고리즘
+    :return:
+        * 가장 긴 체인을 발견했을 경우 True
+        * 발견하지 못했을 경우 False
+    """
+
+    global blockchain
+    longest_chain = None
+    current_len = len(blockchain)
+
+    for node in peers:
+        response = requests.get('http://{}/chain'.format(node))
+        length = response.json()['length']
+        chain = response.json()['chain']
+        if length > current_len and blockchain.check_chain_validity(chain):
+            current_len = length
+            longest_chain = chain
+
+    if longest_chain:
+        blockchain = longest_chain
+        return True
+
+    return False
 
 app.run(debug=True, host='0.0.0.0', port=7000)
