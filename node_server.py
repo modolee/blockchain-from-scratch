@@ -37,6 +37,41 @@ class Blockchain:
         self.chain = []  # 블록 체인 (리스트)
         self.create_genesis_block()
 
+    @property
+    def last_block(self):
+        return self.chain[-1]
+
+    @classmethod
+    def is_valid_proof(cls, block, block_hash):
+        """
+        채굴 난이도에 만족하는 블록 해시인지,
+        블록 정보를 해시한 값과 블록 해시가
+        일치하는 지 확인하는 함수
+        :param block: 검증하려는 블록
+        :param block_hash: 검증하려는 블록 해시
+        :return: 참 / 거짓
+        """
+        return (block_hash.startswith('0' * Blockchain.difficulty) and
+                block_hash == block.compute_hash())
+
+    @classmethod
+    def check_chain_validity(cls, chain):
+        result = True
+        previous_hash = "0"
+
+        for block in chain:
+            block_hash = block.hash
+            delattr(block, "hash")
+
+            if not cls.is_valid_proof(block, block.hash) or \
+                    previous_hash != block.previous_hash:
+                result = False
+                break
+
+            block.hash, previous_hash = block_hash, block_hash
+
+        return result
+
     def create_genesis_block(self):
         """
         Genesis block을 만들고 blockchain에 추가하는 함수
@@ -82,18 +117,6 @@ class Blockchain:
         self.chain.append(block)
         return True
 
-    def is_valid_proof(self, block, block_hash):
-        """
-        채굴 난이도에 만족하는 블록 해시인지,
-        블록 정보를 해시한 값과 블록 해시가
-        일치하는 지 확인하는 함수
-        :param block: 검증하려는 블록
-        :param block_hash: 검증하려는 블록 해시
-        :return: 참 / 거짓
-        """
-        return (block_hash.startswith('0' * Blockchain.difficulty) and
-                block_hash == block.compute_hash())
-
     def add_new_transaction(self, transaction):
         self.unconfirmed_transactions.append(transaction)
 
@@ -119,10 +142,6 @@ class Blockchain:
         self.add_block(new_block, proof)  # 블록체인에 연결
         self.unconfirmed_transactions = []  #pending 트랜잭션 초기화
         return new_block.index
-
-    @property
-    def last_block(self):
-        return self.chain[-1]
 
 
 app = Flask(__name__)
