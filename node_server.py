@@ -195,6 +195,21 @@ def register_new_peers():
 
     return "Success", 201
 
+@app.route('/add_block', methods=['POST'])
+def validate_and_add_block():
+    block_data = request.get_json()
+    block = Block(block_data["index"],
+                  block_data["transactions"],
+                  block_data["timestamp"],
+                  block_data["previous_hash"])
+    proof = block_data["hash"]
+    added = blockchain.add_block(block, proof)
+
+    if not added:
+        return "The block was discarded by the node", 400
+
+    return "Block added to the chain", 201
+
 def consensus():
     """
     가장 긴 체인이 발견되면 그 체인으로 교체하는 컨센서스 알고리즘
@@ -220,5 +235,15 @@ def consensus():
         return True
 
     return False
+
+def announce_new_block(block):
+    """
+    block이 채굴 된 후에 네트워크에 전파하는 함수
+    :param block: 채굴 된 블록
+    """
+    for peer in peers:
+        url = "http://{}/add_block".format(peer)
+        requests.post(url, data=json.dumps(block.__dict__, sort_keys=True))
+
 
 app.run(debug=True, host='0.0.0.0', port=7000)
